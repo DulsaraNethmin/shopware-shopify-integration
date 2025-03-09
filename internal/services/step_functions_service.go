@@ -4,11 +4,11 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/DulsaraNethmin/shopware-shopify-integration/internal/config"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/sfn"
-	"github.com/yourusername/shopware-shopify-integration/internal/config"
 	"gorm.io/gorm"
 )
 

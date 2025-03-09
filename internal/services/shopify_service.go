@@ -6,10 +6,9 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"strings"
 	"time"
 
-	"github.com/yourusername/shopware-shopify-integration/internal/models"
+	"github.com/DulsaraNethmin/shopware-shopify-integration/internal/models"
 	"gorm.io/gorm"
 )
 

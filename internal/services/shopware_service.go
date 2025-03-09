@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/yourusername/shopware-shopify-integration/internal/models"
+	"github.com/DulsaraNethmin/shopware-shopify-integration/internal/models"
 	"gorm.io/gorm"
 )
 
@@ -105,12 +105,16 @@ type PaymentStatus struct {
 func (s *ShopwareService) TestConnection(connector *models.Connector) error {
 	url := fmt.Sprintf("%s/api/oauth/token", connector.URL)
 
+	fmt.Printf("URL: %s", url)
+
+	fmt.Printf("API Key: %s", connector.ApiKey)
+	fmt.Printf("API Secret: %s", connector.ApiSecret)
+
 	requestBody, err := json.Marshal(map[string]string{
-		"client_id":  "administration",
-		"grant_type": "password",
-		"scopes":     "write",
-		"username":   connector.Username,
-		"password":   connector.Password,
+		"grant_type":    "client_credentials",
+		"scopes":        "write",
+		"client_id":     connector.ApiKey,
+		"client_secret": connector.ApiSecret,
 	})
 
 	if err != nil {
@@ -143,11 +147,10 @@ func (s *ShopwareService) GetAccessToken(connector *models.Connector) (string, e
 	url := fmt.Sprintf("%s/api/oauth/token", connector.URL)
 
 	requestBody, err := json.Marshal(map[string]string{
-		"client_id":  "administration",
-		"grant_type": "password",
-		"scopes":     "write",
-		"username":   connector.Username,
-		"password":   connector.Password,
+		"grant_type":    "client_credentials",
+		"scopes":        "write",
+		"client_id":     connector.ApiKey,
+		"client_secret": connector.ApiSecret,
 	})
 
 	if err != nil {
@@ -219,6 +222,35 @@ func (s *ShopwareService) GetProduct(connector *models.Connector, productID stri
 	}
 
 	return &product, nil
+}
+
+// Get All Products
+func (s *ShopwareService) GetAllProducts(connector *models.Connector) ([]ProductResponse, error) {
+	accessToken, err := s.GetAccessToken(connector)
+	if err != nil {
+		return nil, err
+	}
+	url := fmt.Sprintf("%s/api/product", connector.URL)
+	req, err := http.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("error creating request: %w", err)
+	}
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", accessToken))
+	req.Header.Set("Accept", "application/json")
+	resp, err := s.httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("error making request: %w", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("error response from Shopware: %s - %s", resp.Status, string(body))
+	}
+	var products []ProductResponse
+	if err := json.NewDecoder(resp.Body).Decode(&products); err != nil {
+		return nil, fmt.Errorf("error decoding response: %w", err)
+	}
+	return products, nil
 }
 
 // GetOrder gets an order from Shopware

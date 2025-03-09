@@ -3,9 +3,9 @@ package main
 import (
 	"log"
 
-	"github.com/yourusername/shopware-shopify-integration/internal/api"
-	"github.com/yourusername/shopware-shopify-integration/internal/config"
-	"github.com/yourusername/shopware-shopify-integration/internal/db"
+	"github.com/DulsaraNethmin/shopware-shopify-integration/internal/api"
+	"github.com/DulsaraNethmin/shopware-shopify-integration/internal/config"
+	"github.com/DulsaraNethmin/shopware-shopify-integration/internal/db"
 )
 
 func main() {

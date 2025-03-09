@@ -3,11 +3,11 @@ package api
 import (
 	"fmt"
 
+	"github.com/DulsaraNethmin/shopware-shopify-integration/internal/api/handlers"
+	"github.com/DulsaraNethmin/shopware-shopify-integration/internal/api/middleware"
+	"github.com/DulsaraNethmin/shopware-shopify-integration/internal/config"
+	"github.com/DulsaraNethmin/shopware-shopify-integration/internal/services"
 	"github.com/gin-gonic/gin"
-	"github.com/yourusername/shopware-shopify-integration/internal/api/handlers"
-	"github.com/yourusername/shopware-shopify-integration/internal/api/middleware"
-	"github.com/yourusername/shopware-shopify-integration/internal/config"
-	"github.com/yourusername/shopware-shopify-integration/internal/services"
 	"gorm.io/gorm"
 )
 
@@ -40,7 +40,7 @@ func (s *Server) setupRoutes() {
 	dataflowService := services.NewDataflowService(s.database)
 	fieldMappingService := services.NewFieldMappingService(s.database)
 	shopwareService := services.NewShopwareService(s.database)
-	shopifyService := services.NewShopifyService(s.database)
+	//shopifyService := services.NewShopifyService(s.database)
 	stepFunctionsService := services.NewStepFunctionsService(s.config.AWS, s.database)
 
 	// Create handlers
@@ -70,6 +70,9 @@ func (s *Server) setupRoutes() {
 		privateGroup.GET("/connectors/:id", connectorHandler.GetConnector)
 		privateGroup.PUT("/connectors/:id", connectorHandler.UpdateConnector)
 		privateGroup.DELETE("/connectors/:id", connectorHandler.DeleteConnector)
+		privateGroup.GET("connectors/:id/test", connectorHandler.TestConnection)
+
+		//
 
 		// Dataflow routes
 		privateGroup.GET("/dataflows", dataflowHandler.ListDataflows)

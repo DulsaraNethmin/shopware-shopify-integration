@@ -6,9 +6,9 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/DulsaraNethmin/shopware-shopify-integration/internal/models"
+	"github.com/DulsaraNethmin/shopware-shopify-integration/internal/services"
 	"github.com/gin-gonic/gin"
-	"github.com/yourusername/shopware-shopify-integration/internal/models"
-	"github.com/yourusername/shopware-shopify-integration/internal/services"
 	"gorm.io/gorm"
 )
 

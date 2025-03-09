@@ -3,7 +3,7 @@ package services
 import (
 	"errors"
 
-	"github.com/yourusername/shopware-shopify-integration/internal/models"
+	"github.com/DulsaraNethmin/shopware-shopify-integration/internal/models"
 	"gorm.io/gorm"
 )
 

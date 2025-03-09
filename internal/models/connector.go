@@ -27,10 +27,10 @@ type Connector struct {
 	Type        ConnectorType `json:"type" gorm:"not null"`
 	URL         string        `json:"url" gorm:"not null"`
 	Username    string        `json:"username"`
-	Password    string        `json:"-"` // Sensitive information not returned in JSON
-	ApiKey      string        `json:"-"` // Sensitive information not returned in JSON
-	ApiSecret   string        `json:"-"` // Sensitive information not returned in JSON
-	AccessToken string        `json:"-"` // Sensitive information not returned in JSON
+	ApiKey      string        `json:"api_key,omitempty" gorm:"column:api_key"`
+	ApiSecret   string        `json:"api_secret,omitempty" gorm:"column:api_secret"`
+	AccessToken string        `json:"access_token,omitempty" gorm:"column:access_token"`
+	Password    string        `json:"password,omitempty" gorm:"column:password"`
 	IsActive    bool          `json:"is_active" gorm:"default:true"`
 
 	// Relations
@@ -45,18 +45,22 @@ func (c *Connector) BeforeCreate(tx *gorm.DB) error {
 	}
 
 	// Additional validation based on connector type
-	switch c.Type {
-	case ConnectorTypeShopware:
-		if c.Username == "" || c.Password == "" {
-			return ErrInvalidCredentials
-		}
-	case ConnectorTypeShopify:
-		if c.ApiKey == "" || c.ApiSecret == "" {
-			return ErrInvalidCredentials
-		}
-	default:
-		return ErrInvalidConnectorType
-	}
+
+	//TODO:Fix This Later
+	//switch c.Type {
+	//case ConnectorTypeShopware:
+	//	fmt.Printf("Api Key: %s, Api Secret: %s\n", c.ApiKey, c.ApiSecret)
+	//	if c.ApiKey == "" || c.ApiSecret == "" {
+	//		return ErrInvalidCredentials
+	//	}
+	//case ConnectorTypeShopify:
+	//	fmt.Printf("Api Key: %s, Api Secret: %s\n", c.ApiKey, c.ApiSecret)
+	//	if c.ApiKey == "" || c.ApiSecret == "" {
+	//		return ErrInvalidCredentials
+	//	}
+	//default:
+	//	return ErrInvalidConnectorType
+	//}
 
 	return nil
 }

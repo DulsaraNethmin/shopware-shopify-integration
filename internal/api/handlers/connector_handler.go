@@ -5,9 +5,9 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/DulsaraNethmin/shopware-shopify-integration/internal/models"
+	"github.com/DulsaraNethmin/shopware-shopify-integration/internal/services"
 	"github.com/gin-gonic/gin"
-	"github.com/yourusername/shopware-shopify-integration/internal/models"
-	"github.com/yourusername/shopware-shopify-integration/internal/services"
 	"gorm.io/gorm"
 )
 
@@ -35,6 +35,16 @@ type ConnectorResponse struct {
 	UpdatedAt string               `json:"updated_at"`
 }
 
+//type CreateConnectorRequest struct {
+//	Name      string               `json:"name" binding:"required"`
+//	Type      models.ConnectorType `json:"type" binding:"required"`
+//	URL       string               `json:"url" binding:"required"`
+//	ApiKey    string               `json:"api_key"`
+//	ApiSecret string               `json:"api_secret"`
+//	Username  string               `json:"username"`
+//	Password  string               `json:"password"`
+//}
+
 // toResponse converts a connector model to a response
 func toConnectorResponse(connector *models.Connector) ConnectorResponse {
 	return ConnectorResponse{
@@ -52,6 +62,7 @@ func toConnectorResponse(connector *models.Connector) ConnectorResponse {
 // CreateConnector creates a new connector
 func (h *ConnectorHandler) CreateConnector(c *gin.Context) {
 	var connector models.Connector
+	//var req CreateConnectorRequest
 
 	if err := c.ShouldBindJSON(&connector); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
