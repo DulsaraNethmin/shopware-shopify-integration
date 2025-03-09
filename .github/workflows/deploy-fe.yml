@@ -33,19 +33,16 @@ jobs:
         id: docker_tag
         run: |
           if [ "${{ github.event_name }}" == "push" ] && [ "${{ github.ref }}" == "refs/heads/main" ]; then
-            echo "::set-output name=tag::$(date +'%Y%m%d%H%M%S')"
+            echo "tag=$(date +'%Y%m%d%H%M%S')" >> $GITHUB_OUTPUT
           elif [ "${{ github.event_name }}" == "push" ] && [[ "${{ github.ref }}" == refs/tags/v* ]]; then
             tag_version=$(echo "${{ github.ref }}" | sed -e 's/refs\/tags\/v//')
-            echo "::set-output name=tag::v$tag_version"
+            echo "tag=v$tag_version" >> $GITHUB_OUTPUT
           else
-            echo "::set-output name=tag::$(date +'%Y%m%d%H%M%S')"
+            echo "tag=$(date +'%Y%m%d%H%M%S')" >> $GITHUB_OUTPUT
           fi
 
       - name: Build Docker image
-        run: >
-          docker buildx build --no-cache --load 
-          -t ${{ secrets.DOCKER_HUB_USERNAME }}/shopware-client:${{ steps.docker_tag.outputs.tag }} 
-          -f ./client/Dockerfile ./client
+        run: docker buildx build --no-cache --load -t ${{ secrets.DOCKER_HUB_USERNAME }}/shopware-client:${{ steps.docker_tag.outputs.tag }} -f ./client/Dockerfile ./client
 
       # Step 6: Log in to DockerHub using PAT
       - name: Log in to DockerHub
