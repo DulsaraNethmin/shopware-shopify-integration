@@ -180,34 +180,34 @@ export default function LogsPage() {
                             </div>
 
                             <Tabs defaultValue="source">
-                                <TabsList>
-                                    <TabsTrigger value="source">Source Payload</TabsTrigger>
-                                    {selectedLog.transformed_payload && (
-                                        <TabsTrigger value="transformed">Transformed Payload</TabsTrigger>
-                                    )}
-                                </TabsList>
+                                {/*<TabsList>*/}
+                                {/*    <TabsTrigger value="source">Source Payload</TabsTrigger>*/}
+                                {/*    {selectedLog.transformed_payload && (*/}
+                                {/*        <TabsTrigger value="transformed">Transformed Payload</TabsTrigger>*/}
+                                {/*    )}*/}
+                                {/*</TabsList>*/}
 
                                 <TabsContent value="source" className="mt-4">
                                     <Card>
                                         <CardContent className="p-4">
                       <pre className="bg-gray-50 p-4 rounded text-sm font-mono overflow-auto max-h-96">
-                        {formatJSON(selectedLog.source_payload || '{}')}
+                        {/*{formatJSON(selectedLog.source_payload || '{}')}*/}
                       </pre>
                                         </CardContent>
                                     </Card>
                                 </TabsContent>
 
-                                {selectedLog.transformed_payload && (
-                                    <TabsContent value="transformed" className="mt-4">
-                                        <Card>
-                                            <CardContent className="p-4">
-                        <pre className="bg-gray-50 p-4 rounded text-sm font-mono overflow-auto max-h-96">
-                          {formatJSON(selectedLog.transformed_payload)}
-                        </pre>
-                                            </CardContent>
-                                        </Card>
-                                    </TabsContent>
-                                )}
+                        {/*        {selectedLog.transformed_payload && (*/}
+                        {/*            <TabsContent value="transformed" className="mt-4">*/}
+                        {/*                <Card>*/}
+                        {/*                    <CardContent className="p-4">*/}
+                        {/*<pre className="bg-gray-50 p-4 rounded text-sm font-mono overflow-auto max-h-96">*/}
+                        {/*  {formatJSON(selectedLog.transformed_payload)}*/}
+                        {/*</pre>*/}
+                        {/*                    </CardContent>*/}
+                        {/*                </Card>*/}
+                        {/*            </TabsContent>*/}
+                        {/*        )}*/}
                             </Tabs>
                         </CardContent>
                     </Card>
