@@ -22,7 +22,7 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
 
-      # Step 4: Decode .env base64 string and restore it
+      # Step 3: Decode .env base64 string and restore it
       - name: Decode .env file
         run: |
           echo "${{ secrets.ENV_BASE64_FE }}" | base64 --decode > ./client/.env.local
@@ -41,8 +41,16 @@ jobs:
             echo "tag=$(date +'%Y%m%d%H%M%S')" >> $GITHUB_OUTPUT
           fi
 
+      # Step 5: Build Docker image with the standard docker build
       - name: Build Docker image
-        run: docker buildx build --no-cache --load -t ${{ secrets.DOCKER_HUB_USERNAME }}/shopware-client:${{ steps.docker_tag.outputs.tag }} -f ./client/Dockerfile ./client
+        env:
+          DOCKER_USERNAME: ${{ secrets.DOCKER_HUB_USERNAME }}
+          IMAGE_TAG: ${{ steps.docker_tag.outputs.tag }}
+        run: |
+          # Print the command for debugging
+          echo "Building image: ${DOCKER_USERNAME}/shopware-client:${IMAGE_TAG}"
+          # Use the standard docker command instead of buildx
+          docker build --no-cache -t ${DOCKER_USERNAME}/shopware-client:${IMAGE_TAG} -f ./client/Dockerfile ./client
 
       # Step 6: Log in to DockerHub using PAT
       - name: Log in to DockerHub
@@ -50,25 +58,30 @@ jobs:
 
       # Step 7: Push Docker image to DockerHub
       - name: Push Docker image to DockerHub
-        run: docker push ${{ secrets.DOCKER_HUB_USERNAME }}/shopware-client:${{ steps.docker_tag.outputs.tag }}
+        env:
+          DOCKER_USERNAME: ${{ secrets.DOCKER_HUB_USERNAME }}
+          IMAGE_TAG: ${{ steps.docker_tag.outputs.tag }}
+        run: docker push ${DOCKER_USERNAME}/shopware-client:${IMAGE_TAG}
 
       # Step 8: SSH into the VPS and deploy
       - name: Deploy to VPS
         env:
-          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}  # Add your SSH private key to GitHub Secrets
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          DOCKER_USERNAME: ${{ secrets.DOCKER_HUB_USERNAME }}
+          IMAGE_TAG: ${{ steps.docker_tag.outputs.tag }}
         run: |
           echo "$SSH_PRIVATE_KEY" > private_key
           chmod 600 private_key
 
           # SSH into VPS and update the Docker container
-          ssh -i private_key -o StrictHostKeyChecking=no root@116.202.27.145 << 'EOF'
-            docker pull ${{ secrets.DOCKER_HUB_USERNAME }}/shopware-client:${{ steps.docker_tag.outputs.tag }}
+          ssh -i private_key -o StrictHostKeyChecking=no root@116.202.27.145 "
+            docker pull ${DOCKER_USERNAME}/shopware-client:${IMAGE_TAG}
             docker stop shopware-client || true
             docker rm shopware-client || true
-            docker run -d --name shopware-client --network shopware-client -p 3000 ${{ secrets.DOCKER_HUB_USERNAME }}/shopware-client:${{ steps.docker_tag.outputs.tag }}
+            docker run -d --name shopware-client --network shopware-client -p 3000 ${DOCKER_USERNAME}/shopware-client:${IMAGE_TAG}
           
             docker image prune -a -f
-          EOF
+          "
 
       # Step 9: Clean up
       - name: Clean up private key
