@@ -18,16 +18,12 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v2
 
-      # We'll skip the buildx setup since it's causing issues
-      # - name: Set up Docker Buildx
-      #   uses: docker/setup-buildx-action@v2
-
-      # Step 3: Decode .env base64 string and restore it
+      # Step 2: Decode .env base64 string and restore it
       - name: Decode .env file
         run: |
           echo "${{ secrets.ENV_BASE64_FE }}" | base64 --decode > ./client/.env.local
 
-      # Step 4: Determine Docker Image Tag
+      # Step 3: Determine Docker Image Tag
       - name: Set Docker image tag
         id: docker_tag
         run: |
@@ -40,48 +36,41 @@ jobs:
             echo "tag=$(date +'%Y%m%d%H%M%S')" >> $GITHUB_OUTPUT
           fi
 
-      # Step 5: Set full image name as a separate step
-      - name: Set full image name
-        id: image_name
-        env:
-          DOCKER_USERNAME: ${{ secrets.DOCKER_HUB_USERNAME }}
-          IMAGE_TAG: ${{ steps.docker_tag.outputs.tag }}
-        run: |
-          FULL_IMAGE_NAME="${DOCKER_USERNAME}/shopware-client:${IMAGE_TAG}"
-          echo "Setting full image name: ${FULL_IMAGE_NAME}"
-          echo "full_name=${FULL_IMAGE_NAME}" >> $GITHUB_OUTPUT
-
-      # Step 6: Build Docker image with the standard docker build
+      # Step 4: Build Docker image directly with inline variables
       - name: Build Docker image
         run: |
-          echo "Building image: ${{ steps.image_name.outputs.full_name }}"
-          docker build --no-cache -t "${{ steps.image_name.outputs.full_name }}" -f ./client/Dockerfile ./client
+          # Use direct substitution in command
+          docker build --no-cache -t "${{ secrets.DOCKER_HUB_USERNAME }}/shopware-client:${{ steps.docker_tag.outputs.tag }}" -f ./client/Dockerfile ./client
 
-      # Step 7: Log in to DockerHub using PAT
+      # Step 5: Log in to DockerHub using PAT
       - name: Log in to DockerHub
         run: echo "${{ secrets.DOCKER_HUB_PAT }}" | docker login -u "${{ secrets.DOCKER_HUB_USERNAME }}" --password-stdin
 
-      # Step 8: Push Docker image to DockerHub
+      # Step 6: Push Docker image to DockerHub
       - name: Push Docker image to DockerHub
-        run: docker push "${{ steps.image_name.outputs.full_name }}"
+        run: docker push "${{ secrets.DOCKER_HUB_USERNAME }}/shopware-client:${{ steps.docker_tag.outputs.tag }}"
 
-      # Step 9: SSH into the VPS and deploy
+      # Step 7: SSH into the VPS and deploy
       - name: Deploy to VPS
         env:
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          # Set these to simple variables that won't be split
+          DOCKER_IMAGE: "${{ secrets.DOCKER_HUB_USERNAME }}/shopware-client:${{ steps.docker_tag.outputs.tag }}"
         run: |
           echo "$SSH_PRIVATE_KEY" > private_key
           chmod 600 private_key
 
-          # SSH into VPS and update the Docker container
+          # Print the image name for debugging
+          echo "Deploying image: $DOCKER_IMAGE"
+          
           ssh -i private_key -o StrictHostKeyChecking=no root@116.202.27.145 "
-            docker pull ${{ steps.image_name.outputs.full_name }}
+            docker pull $DOCKER_IMAGE
             docker stop shopware-client || true
             docker rm shopware-client || true
-            docker run -d --name shopware-client --network shopware-client -p 3000 ${{ steps.image_name.outputs.full_name }}
+            docker run -d --name shopware-client --network shopware-client -p 3000 $DOCKER_IMAGE
             docker image prune -a -f
           "
 
-      # Step 10: Clean up
+      # Step 8: Clean up
       - name: Clean up private key
         run: rm -f private_key
