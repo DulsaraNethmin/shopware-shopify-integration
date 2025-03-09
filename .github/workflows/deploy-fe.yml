@@ -41,10 +41,11 @@ jobs:
             echo "::set-output name=tag::$(date +'%Y%m%d%H%M%S')"
           fi
 
-      # Step 5: Build Docker image
       - name: Build Docker image
-        run: |
-          docker buildx build --no-cache --load -t ${{ secrets.DOCKER_HUB_USERNAME }}/shopware-client:${{ steps.docker_tag.outputs.tag }} -f ./client/Dockerfile ./client
+        run: >
+          docker buildx build --no-cache --load 
+          -t ${{ secrets.DOCKER_HUB_USERNAME }}/shopware-client:${{ steps.docker_tag.outputs.tag }} 
+          -f ./client/Dockerfile ./client
 
       # Step 6: Log in to DockerHub using PAT
       - name: Log in to DockerHub
