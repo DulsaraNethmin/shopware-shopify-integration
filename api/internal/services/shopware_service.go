@@ -292,6 +292,7 @@ func (s *ShopwareService) GetOrder(connector *models.Connector, orderID string) 
 // RegisterWebhooks registers webhooks with Shopware
 func (s *ShopwareService) RegisterWebhooks(connector *models.Connector, callbackURL string) error {
 	accessToken, err := s.GetAccessToken(connector)
+	fmt.Printf("accesstoken: %s", accessToken)
 	if err != nil {
 		return err
 	}
@@ -319,6 +320,9 @@ func (s *ShopwareService) registerWebhook(connector *models.Connector, accessTok
 		"eventName": event,
 	})
 
+	fmt.Printf("body: %s", requestBody)
+	println(webhookURL)
+
 	if err != nil {
 		return fmt.Errorf("error marshaling request body: %w", err)
 	}
@@ -338,10 +342,70 @@ func (s *ShopwareService) registerWebhook(connector *models.Connector, accessTok
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusCreated && resp.StatusCode != http.StatusOK {
+	if resp.StatusCode != http.StatusCreated && resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNoContent {
 		body, _ := io.ReadAll(resp.Body)
 		return fmt.Errorf("error response from Shopware: %s - %s", resp.Status, string(body))
 	}
 
 	return nil
+}
+
+// GetWebhooks retrieves all webhooks registered with Shopware
+// GetWebhooks retrieves all webhooks registered with Shopware
+func (s *ShopwareService) GetWebhooks(connector *models.Connector) ([]map[string]interface{}, error) {
+	accessToken, err := s.GetAccessToken(connector)
+	if err != nil {
+		return nil, err
+	}
+
+	url := fmt.Sprintf("%s/api/webhook", connector.URL)
+
+	req, err := http.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("error creating request: %w", err)
+	}
+
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", accessToken))
+	req.Header.Set("Accept", "application/json")
+
+	resp, err := s.httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("error making request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("error response from Shopware: %s - %s", resp.Status, string(body))
+	}
+
+	// Read the response body to inspect the structure
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("error reading response body: %w", err)
+	}
+
+	// First try parsing as a response wrapper object
+	var responseWrapper struct {
+		Data []map[string]interface{} `json:"data"`
+	}
+
+	if err := json.Unmarshal(body, &responseWrapper); err == nil && len(responseWrapper.Data) > 0 {
+		return responseWrapper.Data, nil
+	}
+
+	// If that fails, try parsing as a direct array
+	var webhooksArray []map[string]interface{}
+	if err := json.Unmarshal(body, &webhooksArray); err == nil {
+		return webhooksArray, nil
+	}
+
+	// If both fail, try parsing as a single object
+	var webhookObject map[string]interface{}
+	if err := json.Unmarshal(body, &webhookObject); err == nil {
+		return []map[string]interface{}{webhookObject}, nil
+	}
+
+	// If all parsing attempts fail, return error with response content
+	return nil, fmt.Errorf("unable to parse webhook response: %s", string(body))
 }

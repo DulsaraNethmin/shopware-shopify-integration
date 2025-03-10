@@ -71,6 +71,8 @@ func (s *Server) setupRoutes() {
 		privateGroup.PUT("/connectors/:id", connectorHandler.UpdateConnector)
 		privateGroup.DELETE("/connectors/:id", connectorHandler.DeleteConnector)
 		privateGroup.GET("connectors/:id/test", connectorHandler.TestConnection)
+		privateGroup.POST("/connectors/:id/webhooks", connectorHandler.RegisterWebhooks)
+		privateGroup.GET("/connectors/:id/webhooks", connectorHandler.GetWebhooks)
 
 		//
 

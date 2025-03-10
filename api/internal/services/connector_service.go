@@ -2,6 +2,7 @@ package services
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/DulsaraNethmin/shopware-shopify-integration/internal/models"
 	"gorm.io/gorm"
@@ -126,4 +127,19 @@ func (s *ConnectorService) RegisterWebhooks(id uint, callbackURL string) error {
 	default:
 		return models.ErrInvalidConnectorType
 	}
+}
+
+// GetWebhooks gets all webhooks for a connector
+func (s *ConnectorService) GetWebhooks(id uint) ([]map[string]interface{}, error) {
+	connector, err := s.GetConnector(id)
+	if err != nil {
+		return nil, err
+	}
+
+	if connector.Type == models.ConnectorTypeShopware {
+		shopwareService := NewShopwareService(s.db)
+		return shopwareService.GetWebhooks(connector)
+	}
+
+	return nil, fmt.Errorf("getting webhooks not supported for connector type: %s", connector.Type)
 }

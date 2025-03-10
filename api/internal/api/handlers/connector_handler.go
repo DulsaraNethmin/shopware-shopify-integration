@@ -267,3 +267,32 @@ func (h *ConnectorHandler) RegisterWebhooks(c *gin.Context) {
 		"message": "Webhooks registered successfully",
 	})
 }
+
+// GetWebhooks gets all webhooks for a connector
+func (h *ConnectorHandler) GetWebhooks(c *gin.Context) {
+	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Invalid connector ID",
+		})
+		return
+	}
+
+	// Get webhooks from the service
+	webhooks, err := h.service.GetWebhooks(uint(id))
+	if err != nil {
+		status := http.StatusInternalServerError
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			status = http.StatusNotFound
+		}
+
+		c.JSON(status, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"data": webhooks,
+	})
+}
