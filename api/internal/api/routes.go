@@ -21,6 +21,8 @@ type Server struct {
 func NewServer(cfg *config.Config, db *gorm.DB) *Server {
 	router := gin.Default()
 
+	router.Use(middleware.CORSMiddleware())
+
 	server := &Server{
 		router:   router,
 		config:   cfg,
