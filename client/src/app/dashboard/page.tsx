@@ -11,6 +11,7 @@ import { AuthGuard } from '@/contexts/AuthContext';
 import api, { Connector, Dataflow, MigrationLog } from '@/lib/api';
 import { formatDate, getStatusVariant } from '@/lib/utils';
 import toast from 'react-hot-toast';
+import { getToken } from '../../lib/keycloak';
 
 export default function DashboardPage() {
     const [isLoading, setIsLoading] = useState(true);
@@ -74,6 +75,9 @@ export default function DashboardPage() {
         fetchDashboardData();
     }, []);
 
+
+    // alert("token: " + getToken());
+    console.log("token: " + getToken());
     return (
         <AuthGuard>
             <DashboardLayout>

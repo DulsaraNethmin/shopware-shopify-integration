@@ -2,7 +2,6 @@ package api
 
 import (
 	"fmt"
-
 	"github.com/DulsaraNethmin/shopware-shopify-integration/internal/api/handlers"
 	"github.com/DulsaraNethmin/shopware-shopify-integration/internal/api/middleware"
 	"github.com/DulsaraNethmin/shopware-shopify-integration/internal/config"
@@ -48,6 +47,8 @@ func (s *Server) setupRoutes() {
 	dataflowHandler := handlers.NewDataflowHandler(dataflowService, fieldMappingService)
 	webhookHandler := handlers.NewWebhookHandler(s.database, shopwareService, stepFunctionsService)
 
+	keycloakMiddleware := middleware.NewKeycloakMiddleware(s.config.Keycloak)
+
 	// Public routes (no authentication required)
 	publicGroup := s.router.Group("/api/v1")
 	{
@@ -62,7 +63,9 @@ func (s *Server) setupRoutes() {
 
 	// Private routes (authentication required)
 	privateGroup := s.router.Group("/api/v1")
-	privateGroup.Use(middleware.AuthMiddleware(s.config.Server.Secret))
+	//privateGroup.Use(middleware.AuthMiddleware(s.config.Server.Secret))
+	privateGroup.Use(keycloakMiddleware.AuthRequired)
+	//privateGroup.Use()
 	{
 		// Connector routes
 		privateGroup.GET("/connectors", connectorHandler.ListConnectors)

@@ -66,7 +66,7 @@ export default function ConnectorsPage() {
                     description="Manage your Shopware and Shopify connections"
                     actions={
                         <Button asChild>
-                            <Link href="/connectors/new">Add Connector</Link>
+                            <Link href="/connectors/new" className="text-gray-700">Add Connector</Link>
                         </Button>
                     }
                 />
@@ -77,10 +77,10 @@ export default function ConnectorsPage() {
                     </div>
                 ) : connectors.length === 0 ? (
                     <Card>
-                        <CardContent className="flex flex-col items-center justify-center h-64">
+                        <CardContent className="flex flex-col items-center justify-center h-64 text-black">
                             <p className="text-muted-foreground mb-4">No connectors found</p>
                             <Button asChild>
-                                <Link href="/connectors/new">Add Your First Connector</Link>
+                                <Link href="/connectors/new" className="text-gray-700">Add Your First Connector</Link>
                             </Button>
                         </CardContent>
                     </Card>

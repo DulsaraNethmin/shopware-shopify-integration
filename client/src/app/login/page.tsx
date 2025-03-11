@@ -62,7 +62,7 @@ export default function LoginPage() {
 
                     <button
                         onClick={handleLogin}
-                        className="w-full py-3 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors duration-300"
+                        className="w-full py-3 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors duration-300 cursor-pointer"
                     >
                         Sign in with Keycloak
                     </button>

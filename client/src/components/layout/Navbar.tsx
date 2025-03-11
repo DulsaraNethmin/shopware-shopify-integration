@@ -26,7 +26,7 @@ export default function Navbar() {
                         <Button
                             onClick={logout}
                             variant="ghost"
-                            className="ml-3"
+                            className="ml-3 cursor-pointer"
                         >
                             <span className="mr-2">{userInfo?.email || userInfo?.name || userInfo?.username}</span>
                             Logout

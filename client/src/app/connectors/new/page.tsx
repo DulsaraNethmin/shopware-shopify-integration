@@ -88,7 +88,7 @@ export default function NewConnectorPage() {
                                     name="name"
                                     value={formData.name}
                                     onChange={handleChange}
-                                    placeholder="My Shopware Store"
+                                    placeholder="My Shopware/Shopify Store"
                                     required
                                 />
                             </div>
@@ -173,18 +173,18 @@ export default function NewConnectorPage() {
                                 </>
                             )}
 
-                            <div className="space-y-2">
-                                <label htmlFor="username" className="text-sm font-medium">
-                                    Username (Optional)
-                                </label>
-                                <Input
-                                    id="username"
-                                    name="username"
-                                    value={formData.username}
-                                    onChange={handleChange}
-                                    placeholder="Username for reference"
-                                />
-                            </div>
+                            {/*<div className="space-y-2">*/}
+                            {/*    <label htmlFor="username" className="text-sm font-medium">*/}
+                            {/*        Username (Optional)*/}
+                            {/*    </label>*/}
+                            {/*    <Input*/}
+                            {/*        id="username"*/}
+                            {/*        name="username"*/}
+                            {/*        value={formData.username}*/}
+                            {/*        onChange={handleChange}*/}
+                            {/*        placeholder="Username for reference"*/}
+                            {/*    />*/}
+                            {/*</div>*/}
 
                             <div className="flex items-center">
                                 <input
@@ -208,7 +208,7 @@ export default function NewConnectorPage() {
                             >
                                 Cancel
                             </Button>
-                            <Button type="submit" disabled={isLoading}>
+                            <Button type="submit" disabled={isLoading} className="text-gray-700 cursor-pointer">
                                 {isLoading ? 'Creating...' : 'Create Connector'}
                             </Button>
                         </CardFooter>
