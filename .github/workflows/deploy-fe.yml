@@ -1,4 +1,4 @@
-name: Deploy Backend to Hostinger VPS
+name: Deploy Backend to VPS
 
 on:
   push:
