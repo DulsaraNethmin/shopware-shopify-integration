@@ -115,7 +115,7 @@ export default function NewDataflowPage() {
                                 <p className="text-muted-foreground mb-4">
                                     You need at least one active Shopware connector and one active Shopify connector to create a dataflow.
                                 </p>
-                                <Button asChild>
+                                <Button asChild className="text-gray-700">
                                     <a href="/connectors/new">Create Connector</a>
                                 </Button>
                             </div>
@@ -235,7 +235,7 @@ export default function NewDataflowPage() {
                                 >
                                     Cancel
                                 </Button>
-                                <Button type="submit" disabled={isSaving}>
+                                <Button type="submit" disabled={isSaving} variant={"secondary"}>
                                     {isSaving ? 'Creating...' : 'Create Dataflow'}
                                 </Button>
                             </CardFooter>

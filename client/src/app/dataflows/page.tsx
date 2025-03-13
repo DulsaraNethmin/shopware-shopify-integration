@@ -67,7 +67,7 @@ export default function DataflowsPage() {
                     title="Dataflows"
                     description="Manage your data migration flows"
                     actions={
-                        <Button asChild>
+                        <Button asChild variant={"outline"}>
                             <Link href="/dataflows/new">Create Dataflow</Link>
                         </Button>
                     }
@@ -81,7 +81,7 @@ export default function DataflowsPage() {
                     <Card>
                         <CardContent className="flex flex-col items-center justify-center h-64">
                             <p className="text-muted-foreground mb-4">No dataflows found</p>
-                            <Button asChild>
+                            <Button asChild variant={"secondary"}>
                                 <Link href="/dataflows/new">Create Your First Dataflow</Link>
                             </Button>
                         </CardContent>

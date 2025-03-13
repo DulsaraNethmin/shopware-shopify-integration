@@ -170,7 +170,7 @@ function FieldMappingForm({ mapping, dataflowId, onSave, onCancel }: FieldMappin
                         <Button type="button" variant="outline" onClick={onCancel}>
                             Cancel
                         </Button>
-                        <Button type="submit" disabled={isLoading}>
+                        <Button type="submit" disabled={isLoading} variant={"secondary"}>
                             {isLoading ? 'Saving...' : 'Save Mapping'}
                         </Button>
                     </div>
@@ -282,8 +282,25 @@ export default function FieldMappingsPage() {
         }
     };
 
+    // const handleAddRecommendedField = (source: string, dest: string) => {
+    //     setEditMapping(undefined);
+    //     setShowForm(true);
+    //     setActiveTab('form');
+    // };
+
     const handleAddRecommendedField = (source: string, dest: string) => {
-        setEditMapping(undefined);
+        // Create a partial mapping with the recommended values
+        const recommendedMapping = {
+            source_field: source,
+            dest_field: dest,
+            transform_type: 'none',
+            transform_config: '{}',
+            is_required: false,
+            default_value: ''
+        };
+
+        // Set as editing (not creating) but without an ID
+        setEditMapping(recommendedMapping as FieldMapping);
         setShowForm(true);
         setActiveTab('form');
     };
@@ -323,7 +340,7 @@ export default function FieldMappingsPage() {
                     title={`Field Mappings: ${dataflow.name}`}
                     description={`Configure field mappings for ${dataflow.type} data`}
                     actions={
-                        <Button onClick={handleAddMapping}>
+                        <Button onClick={handleAddMapping} variant={"outline"}>
                             Add Field Mapping
                         </Button>
                     }
@@ -366,7 +383,7 @@ export default function FieldMappingsPage() {
                             <Card>
                                 <CardContent className="flex flex-col items-center justify-center py-12">
                                     <p className="text-muted-foreground mb-4">No field mappings defined yet</p>
-                                    <Button onClick={handleAddMapping}>
+                                    <Button onClick={handleAddMapping} variant={"secondary"}>
                                         Add Your First Field Mapping
                                     </Button>
                                 </CardContent>
@@ -448,6 +465,7 @@ export default function FieldMappingsPage() {
                                             <Button
                                                 size="sm"
                                                 onClick={() => handleAddRecommendedField(rec.source, rec.dest)}
+                                                variant={"outline"}
                                             >
                                                 Add Mapping
                                             </Button>

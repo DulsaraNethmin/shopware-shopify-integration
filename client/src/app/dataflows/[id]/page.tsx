@@ -109,8 +109,8 @@ export default function DataflowDetailPage() {
                             >
                                 {dataflow.status === 'active' ? 'Deactivate' : 'Activate'}
                             </Button>
-                            <Button asChild>
-                                <Link href={`/dataflows/${dataflow.id}/mappings`}>Manage Field Mappings</Link>
+                            <Button asChild >
+                                <Link href={`/dataflows/${dataflow.id}/mappings`} className="text-gray-700">Manage Field Mappings</Link>
                             </Button>
                         </div>
                     }
