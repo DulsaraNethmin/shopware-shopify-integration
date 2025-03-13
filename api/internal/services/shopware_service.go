@@ -29,16 +29,39 @@ func NewShopwareService(db *gorm.DB) *ShopwareService {
 }
 
 // ProductResponse represents a Shopware product response
+//type ProductResponse struct {
+//	ID          string    `json:"id"`
+//	Name        string    `json:"name"`
+//	Description string    `json:"description"`
+//	Price       []Price   `json:"price"`
+//	Stock       int       `json:"stock"`
+//	Categories  []string  `json:"categories"`
+//	Images      []Image   `json:"media"`
+//	CreatedAt   time.Time `json:"createdAt"`
+//	UpdatedAt   time.Time `json:"updatedAt"`
+//}
+
+type ShopwareResponse struct {
+	Data ProductResponse `json:"data"`
+}
+
+// ProductResponse represents a Shopware product response
 type ProductResponse struct {
-	ID          string    `json:"id"`
-	Name        string    `json:"name"`
-	Description string    `json:"description"`
-	Price       []Price   `json:"price"`
-	Stock       int       `json:"stock"`
-	Categories  []string  `json:"categories"`
-	Images      []Image   `json:"media"`
-	CreatedAt   time.Time `json:"createdAt"`
-	UpdatedAt   time.Time `json:"updatedAt"`
+	ID             string    `json:"id"`
+	Name           string    `json:"name"`
+	Description    string    `json:"description"`
+	Price          []Price   `json:"price"`
+	Stock          int       `json:"stock"`
+	AvailableStock int       `json:"availableStock"`
+	ProductNumber  string    `json:"productNumber"`
+	Categories     []string  `json:"categoryIds"`
+	Media          []Image   `json:"media"`
+	CreatedAt      time.Time `json:"createdAt"`
+	UpdatedAt      time.Time `json:"updatedAt"`
+	Translated     struct {
+		Name        string `json:"name"`
+		Description string `json:"description"`
+	} `json:"translated"`
 }
 
 // Price represents a Shopware product price
@@ -189,16 +212,117 @@ func (s *ShopwareService) GetAccessToken(connector *models.Connector) (string, e
 }
 
 // GetProduct gets a product from Shopware
+//func (s *ShopwareService) GetProduct(connector *models.Connector, productID string) (*ProductResponse, error) {
+//	accessToken, err := s.GetAccessToken(connector)
+//	if err != nil {
+//		return nil, err
+//	}
+//
+//	url := fmt.Sprintf("%s/api/product/%s", connector.URL, productID)
+//
+//	req, err := http.NewRequest(http.MethodGet, url, nil)
+//	if err != nil {
+//		return nil, fmt.Errorf("error creating request: %w", err)
+//	}
+//
+//	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", accessToken))
+//	req.Header.Set("Accept", "application/json")
+//
+//	resp, err := s.httpClient.Do(req)
+//	if err != nil {
+//		return nil, fmt.Errorf("error making request: %w", err)
+//	}
+//	defer resp.Body.Close()
+//
+//	if resp.StatusCode != http.StatusOK {
+//		body, _ := io.ReadAll(resp.Body)
+//		return nil, fmt.Errorf("error response from Shopware: %s - %s", resp.Status, string(body))
+//	}
+//
+//	var product ProductResponse
+//	if err := json.NewDecoder(resp.Body).Decode(&product); err != nil {
+//		return nil, fmt.Errorf("error decoding response: %w", err)
+//	}
+//
+//	return &product, nil
+//}
+
+// GetProduct gets a product from Shopware
+//func (s *ShopwareService) GetProduct(connector *models.Connector, productID string) (*ProductResponse, error) {
+//	accessToken, err := s.GetAccessToken(connector)
+//	if err != nil {
+//		fmt.Printf("Failed to get access token: %v\n", err)
+//		return nil, err
+//	}
+//
+//	fmt.Printf("Using access token: %s\n", accessToken)
+//	fmt.Printf("Getting product with ID: %s\n", productID)
+//
+//	// Make sure we're using the correct API endpoint format
+//	url := fmt.Sprintf("%s/api/product/%s", connector.URL, productID)
+//	fmt.Printf("API URL: %s\n", url)
+//
+//	req, err := http.NewRequest(http.MethodGet, url, nil)
+//	if err != nil {
+//		fmt.Printf("Error creating request: %v\n", err)
+//		return nil, fmt.Errorf("error creating request: %w", err)
+//	}
+//
+//	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", accessToken))
+//	req.Header.Set("Accept", "application/json")
+//
+//	resp, err := s.httpClient.Do(req)
+//	if err != nil {
+//		fmt.Printf("Error making request: %v\n", err)
+//		return nil, fmt.Errorf("error making request: %w", err)
+//	}
+//	defer resp.Body.Close()
+//
+//	// Read the full response body for logging
+//	body, err := io.ReadAll(resp.Body)
+//	if err != nil {
+//		fmt.Printf("Error reading response body: %v\n", err)
+//		return nil, fmt.Errorf("error reading response body: %w", err)
+//	}
+//
+//	fmt.Printf("API response status: %d\n", resp.StatusCode)
+//	fmt.Printf("API response body: %s\n", string(body))
+//
+//	if resp.StatusCode != http.StatusOK {
+//		return nil, fmt.Errorf("error response from Shopware: %s - %s", resp.Status, string(body))
+//	}
+//
+//	// Create a new reader from the body bytes for JSON decoding
+//	bodyReader := bytes.NewReader(body)
+//
+//	var product ProductResponse
+//	if err := json.NewDecoder(bodyReader).Decode(&product); err != nil {
+//		fmt.Printf("Error decoding response: %v\n", err)
+//		return nil, fmt.Errorf("error decoding response: %w", err)
+//	}
+//
+//	fmt.Printf("Decoded product: %+v\n", product)
+//
+//	return &product, nil
+//}
+
+// GetProduct gets a product from Shopware
 func (s *ShopwareService) GetProduct(connector *models.Connector, productID string) (*ProductResponse, error) {
 	accessToken, err := s.GetAccessToken(connector)
 	if err != nil {
+		fmt.Printf("Failed to get access token: %v\n", err)
 		return nil, err
 	}
 
+	fmt.Printf("Using access token: %s\n", accessToken)
+	fmt.Printf("Getting product with ID: %s\n", productID)
+
 	url := fmt.Sprintf("%s/api/product/%s", connector.URL, productID)
+	fmt.Printf("API URL: %s\n", url)
 
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
+		fmt.Printf("Error creating request: %v\n", err)
 		return nil, fmt.Errorf("error creating request: %w", err)
 	}
 
@@ -207,19 +331,45 @@ func (s *ShopwareService) GetProduct(connector *models.Connector, productID stri
 
 	resp, err := s.httpClient.Do(req)
 	if err != nil {
+		fmt.Printf("Error making request: %v\n", err)
 		return nil, fmt.Errorf("error making request: %w", err)
 	}
 	defer resp.Body.Close()
 
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		fmt.Printf("Error reading response body: %v\n", err)
+		return nil, fmt.Errorf("error reading response body: %w", err)
+	}
+
+	fmt.Printf("API response status: %d\n", resp.StatusCode)
+	fmt.Printf("API response body: %s\n", string(body))
+
 	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
 		return nil, fmt.Errorf("error response from Shopware: %s - %s", resp.Status, string(body))
 	}
 
-	var product ProductResponse
-	if err := json.NewDecoder(resp.Body).Decode(&product); err != nil {
+	// Parse the nested response
+	var response ShopwareResponse
+	if err := json.Unmarshal(body, &response); err != nil {
+		fmt.Printf("Error decoding response: %v\n", err)
 		return nil, fmt.Errorf("error decoding response: %w", err)
 	}
+
+	// Extract the product data from the nested structure
+	product := response.Data
+
+	// If name is empty in the main object but exists in 'translated', use that
+	if product.Name == "" && product.Translated.Name != "" {
+		product.Name = product.Translated.Name
+	}
+
+	// If description is empty in the main object but exists in 'translated', use that
+	if product.Description == "" && product.Translated.Description != "" {
+		product.Description = product.Translated.Description
+	}
+
+	fmt.Printf("Decoded product: %+v\n", product)
 
 	return &product, nil
 }
@@ -290,27 +440,50 @@ func (s *ShopwareService) GetOrder(connector *models.Connector, orderID string) 
 }
 
 // RegisterWebhooks registers webhooks with Shopware
+//func (s *ShopwareService) RegisterWebhooks(connector *models.Connector, callbackURL string) error {
+//	accessToken, err := s.GetAccessToken(connector)
+//	fmt.Printf("Access token: %s\n", accessToken)
+//	fmt.Printf("accesstoken: %s", accessToken)
+//	if err != nil {
+//		return err
+//	}
+//
+//	// Register product webhook
+//	if err := s.registerWebhook(connector, accessToken, "product.written", callbackURL+"/product"); err != nil {
+//		return err
+//	}
+//
+//	// Register order webhook
+//	if err := s.registerWebhook(connector, accessToken, "order.placed", callbackURL+"/order"); err != nil {
+//		return err
+//	}
+//
+//	return nil
+//}
+
+// registerWebhook registers a webhook with Shopware
+
+// RegisterWebhooks registers webhooks with Shopware
 func (s *ShopwareService) RegisterWebhooks(connector *models.Connector, callbackURL string) error {
 	accessToken, err := s.GetAccessToken(connector)
-	fmt.Printf("accesstoken: %s", accessToken)
+	fmt.Printf("access token: %s\n", accessToken)
 	if err != nil {
 		return err
 	}
 
 	// Register product webhook
-	if err := s.registerWebhook(connector, accessToken, "product.written", callbackURL+"/product"); err != nil {
+	if err := s.registerWebhook(connector, accessToken, "product.written", callbackURL); err != nil {
 		return err
 	}
 
 	// Register order webhook
-	if err := s.registerWebhook(connector, accessToken, "order.placed", callbackURL+"/order"); err != nil {
+	if err := s.registerWebhook(connector, accessToken, "order.placed", callbackURL); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-// registerWebhook registers a webhook with Shopware
 func (s *ShopwareService) registerWebhook(connector *models.Connector, accessToken, event, url string) error {
 	webhookURL := fmt.Sprintf("%s/api/webhook", connector.URL)
 

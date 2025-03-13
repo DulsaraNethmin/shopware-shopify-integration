@@ -24,8 +24,9 @@ type Config struct {
 
 // ServerConfig holds server related configuration
 type ServerConfig struct {
-	Port   int
-	Secret string
+	Port        int
+	Secret      string
+	CallbackURL string
 }
 
 // DatabaseConfig holds database related configuration
@@ -81,8 +82,9 @@ func loadExistingConfig() (*Config, error) {
 
 	return &Config{
 		Server: ServerConfig{
-			Port:   port,
-			Secret: getEnv("SERVER_SECRET", "your-secret-key"),
+			Port:        port,
+			Secret:      getEnv("SERVER_SECRET", "your-secret-key"),
+			CallbackURL: getEnv("SERVER_CALLBACK_URL", "http://localhost:8080"),
 		},
 		Database: DatabaseConfig{
 			Host:     getEnv("DB_HOST", "localhost"),

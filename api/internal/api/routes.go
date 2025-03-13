@@ -45,7 +45,8 @@ func (s *Server) setupRoutes() {
 	stepFunctionsService := services.NewStepFunctionsService(s.config.AWS, s.database)
 
 	// Create handlers
-	connectorHandler := handlers.NewConnectorHandler(connectorService)
+	//connectorHandler := handlers.NewConnectorHandler(connectorService)
+	connectorHandler := handlers.NewConnectorHandler(connectorService, s.config)
 	dataflowHandler := handlers.NewDataflowHandler(dataflowService, fieldMappingService)
 	webhookHandler := handlers.NewWebhookHandler(s.database, shopwareService, stepFunctionsService)
 
@@ -59,6 +60,12 @@ func (s *Server) setupRoutes() {
 			c.JSON(200, gin.H{"status": "Healthy!"})
 		})
 
+		// Webhook endpoint for Shopware
+		// Webhook endpoints for Shopware
+		//publicGroup.POST("/webhook/shopware", webhookHandler.HandleShopwareWebhook)
+		//publicGroup.POST("/webhook/shopware/product", webhookHandler.HandleShopwareWebhook)
+		//publicGroup.POST("/webhook/shopware/order", webhookHandler.HandleShopwareWebhook)
+		// In routes.go
 		// Webhook endpoint for Shopware
 		publicGroup.POST("/webhook/shopware", webhookHandler.HandleShopwareWebhook)
 

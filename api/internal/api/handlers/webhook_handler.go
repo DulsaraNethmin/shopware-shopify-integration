@@ -2,8 +2,10 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/DulsaraNethmin/shopware-shopify-integration/internal/models"
@@ -33,16 +35,31 @@ func NewWebhookHandler(
 }
 
 // ShopwareWebhookRequest represents a webhook request from Shopware
+
 type ShopwareWebhookRequest struct {
-	Source string          `json:"source"` // "product" or "order"
-	Event  string          `json:"event"`  // "created", "updated", "deleted"
-	Data   json.RawMessage `json:"data"`   // Raw JSON data
+	Data struct {
+		Payload []struct {
+			Entity        string   `json:"entity"`
+			Operation     string   `json:"operation"`
+			PrimaryKey    string   `json:"primaryKey"`
+			UpdatedFields []string `json:"updatedFields"`
+			VersionId     string   `json:"versionId"`
+		} `json:"payload"`
+		Event string `json:"event"`
+	} `json:"data"`
+	Source struct {
+		URL     string `json:"url"`
+		EventID string `json:"eventId"`
+	} `json:"source"`
+	Timestamp int64 `json:"timestamp"`
 }
 
-// HandleShopwareWebhook handles a webhook from Shopware
 func (h *WebhookHandler) HandleShopwareWebhook(c *gin.Context) {
+
+	println("nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn")
 	// Read and validate the webhook payload
 	body, err := io.ReadAll(c.Request.Body)
+	//print(string(body))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "Error reading request body",
@@ -58,16 +75,25 @@ func (h *WebhookHandler) HandleShopwareWebhook(c *gin.Context) {
 		return
 	}
 
+	fmt.Print(webhook)
+
+	// Check if there's a valid payload
+	if len(webhook.Data.Payload) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "No payload in webhook",
+		})
+		return
+	}
+
 	// Determine data type and event type
 	var dataflowType models.DataflowType
-	switch webhook.Source {
-	case "product":
+	if webhook.Data.Event == "product.written" {
 		dataflowType = models.DataflowTypeProduct
-	case "order":
+	} else if webhook.Data.Event == "order.placed" {
 		dataflowType = models.DataflowTypeOrder
-	default:
+	} else {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Unsupported source type",
+			"error": "Unsupported event type: " + webhook.Data.Event,
 		})
 		return
 	}
@@ -83,6 +109,9 @@ func (h *WebhookHandler) HandleShopwareWebhook(c *gin.Context) {
 		return
 	}
 
+	println("dataflowssssssssssssssssssssssssssssssssssssssssssssssss")
+	print(dataflows)
+
 	if len(dataflows) == 0 {
 		c.JSON(http.StatusOK, gin.H{
 			"message": "No active dataflows found for this data type",
@@ -91,30 +120,58 @@ func (h *WebhookHandler) HandleShopwareWebhook(c *gin.Context) {
 	}
 
 	// Extract source identifier from data
-	var sourceID string
-	switch dataflowType {
-	case models.DataflowTypeProduct:
-		var product struct {
-			ID string `json:"id"`
+	sourceID := ""
+	for _, payload := range webhook.Data.Payload {
+		if dataflowType == models.DataflowTypeProduct && payload.Entity == "product" {
+			sourceID = payload.PrimaryKey
+		} else if dataflowType == models.DataflowTypeOrder && payload.Entity == "order" {
+			sourceID = payload.PrimaryKey
 		}
-		if err := json.Unmarshal(webhook.Data, &product); err != nil {
+	}
+
+	if sourceID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Could not determine source identifier",
+		})
+		return
+	}
+
+	// For products, we need to fetch the full product data
+	var sourceData []byte
+	if dataflowType == models.DataflowTypeProduct {
+		// Find the Shopware connector that has the URL matching the source URL
+		var connector models.Connector
+		domain := strings.TrimPrefix(webhook.Source.URL, "https://")
+		if err := h.db.Where("type = ? AND url LIKE ?", models.ConnectorTypeShopware, "%"+domain+"%").First(&connector).Error; err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{
-				"error": "Invalid product data",
+				"error": "Could not find matching connector for the source URL",
 			})
 			return
 		}
-		sourceID = product.ID
-	case models.DataflowTypeOrder:
-		var order struct {
-			ID string `json:"id"`
-		}
-		if err := json.Unmarshal(webhook.Data, &order); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"error": "Invalid order data",
+
+		// Get the full product data
+		product, err := h.shopwareService.GetProduct(&connector, sourceID)
+		println("Proooooooooooooooooooooooduct")
+		println(*&product)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": "Failed to get product data: " + err.Error(),
 			})
 			return
 		}
-		sourceID = order.ID
+
+		sourceData, err = json.Marshal(product)
+
+		println(string(sourceData))
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": "Failed to marshal product data",
+			})
+			return
+		}
+	} else {
+		// For orders, just pass the webhook payload as is
+		sourceData = body
 	}
 
 	// Process each matching dataflow
@@ -124,7 +181,7 @@ func (h *WebhookHandler) HandleShopwareWebhook(c *gin.Context) {
 			DataflowID:       dataflow.ID,
 			Status:           models.MigrationStatusPending,
 			SourceIdentifier: sourceID,
-			SourcePayload:    string(webhook.Data),
+			SourcePayload:    string(sourceData),
 		}
 
 		if err := h.db.Create(&migrationLog).Error; err != nil {
@@ -133,7 +190,7 @@ func (h *WebhookHandler) HandleShopwareWebhook(c *gin.Context) {
 		}
 
 		// Start a Step Functions execution
-		executionARN, err := h.stepFunctionsService.StartExecution(dataflow.ID, migrationLog.ID, webhook.Data)
+		executionARN, err := h.stepFunctionsService.StartExecution(dataflow.ID, migrationLog.ID, sourceData)
 		if err != nil {
 			migrationLog.Status = models.MigrationStatusFailed
 			migrationLog.ErrorMessage = err.Error()

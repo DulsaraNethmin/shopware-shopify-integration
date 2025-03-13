@@ -2,6 +2,8 @@ package handlers
 
 import (
 	"errors"
+	"fmt"
+	"github.com/DulsaraNethmin/shopware-shopify-integration/internal/config"
 	"net/http"
 	"strconv"
 
@@ -14,12 +16,14 @@ import (
 // ConnectorHandler handles connector API requests
 type ConnectorHandler struct {
 	service *services.ConnectorService
+	config  *config.Config
 }
 
 // NewConnectorHandler creates a new connector handler
-func NewConnectorHandler(service *services.ConnectorService) *ConnectorHandler {
+func NewConnectorHandler(service *services.ConnectorService, config *config.Config) *ConnectorHandler { // Updated param
 	return &ConnectorHandler{
 		service: service,
+		config:  config, // Add this
 	}
 }
 
@@ -62,7 +66,6 @@ func toConnectorResponse(connector *models.Connector) ConnectorResponse {
 // CreateConnector creates a new connector
 func (h *ConnectorHandler) CreateConnector(c *gin.Context) {
 	var connector models.Connector
-	//var req CreateConnectorRequest
 
 	if err := c.ShouldBindJSON(&connector); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -76,6 +79,23 @@ func (h *ConnectorHandler) CreateConnector(c *gin.Context) {
 			"error": err.Error(),
 		})
 		return
+	}
+
+	// If it's a Shopware connector, register webhooks automatically
+	if connector.Type == models.ConnectorTypeShopware {
+		// Get the callback URL from configuration
+		callbackURL := h.config.Server.CallbackURL + "/api/v1/webhook/shopware"
+
+		// Register webhooks
+		if err := h.service.RegisterWebhooks(connector.ID, callbackURL); err != nil {
+			// Log the error but don't fail the connector creation
+			c.JSON(http.StatusCreated, gin.H{
+				"message": "Connector created successfully, but webhook registration failed",
+				"data":    toConnectorResponse(&connector),
+				"warning": fmt.Sprintf("Failed to register webhooks: %v", err),
+			})
+			return
+		}
 	}
 
 	c.JSON(http.StatusCreated, gin.H{
