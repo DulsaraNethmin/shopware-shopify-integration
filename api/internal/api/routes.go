@@ -61,6 +61,10 @@ func (s *Server) setupRoutes() {
 
 		// Webhook endpoint for Shopware
 		publicGroup.POST("/webhook/shopware", webhookHandler.HandleShopwareWebhook)
+
+		publicGroup.GET("shopify/callback", func(c *gin.Context) {
+			c.JSON(200, gin.H{"status": "Shopify"})
+		})
 	}
 
 	// Private routes (authentication required)

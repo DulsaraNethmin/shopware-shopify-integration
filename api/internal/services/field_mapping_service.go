@@ -239,6 +239,26 @@ func (s *FieldMappingService) applyTransformation(value interface{}, mapping mod
 		result = strings.ReplaceAll(result, "{{value}}", fmt.Sprintf("%v", value))
 		return result, nil
 
+	case models.TransformationTypeGraphQLID:
+		var config struct {
+			ResourceType string `json:"resource_type"`
+			Direction    string `json:"direction"` // "to_global" or "from_global"
+		}
+
+		if err := json.Unmarshal([]byte(mapping.TransformConfig), &config); err != nil {
+			return nil, fmt.Errorf("invalid transform config: %w", err)
+		}
+
+		if str, ok := value.(string); ok {
+			if config.Direction == "to_global" {
+				return s.convertToGraphQLGlobalID(config.ResourceType, str), nil
+			} else if config.Direction == "from_global" {
+				return s.convertFromGraphQLGlobalID(str), nil
+			}
+			return nil, fmt.Errorf("invalid direction: %s", config.Direction)
+		}
+		return nil, fmt.Errorf("value is not a string")
+
 	default:
 		return nil, fmt.Errorf("unsupported transformation type: %s", mapping.TransformType)
 	}
@@ -389,4 +409,20 @@ func setNestedValue(obj map[string]interface{}, path string, value interface{}) 
 	}
 
 	return nil
+
+}
+
+// convertToGraphQLGlobalID converts a regular ID to a Shopify GraphQL Global ID
+func (s *FieldMappingService) convertToGraphQLGlobalID(resourceType string, id string) string {
+	return fmt.Sprintf("gid://shopify/%s/%s", resourceType, id)
+}
+
+// convertFromGraphQLGlobalID extracts the original ID from a Shopify GraphQL Global ID
+func (s *FieldMappingService) convertFromGraphQLGlobalID(globalID string) string {
+	// GraphQL IDs are in the format: gid://shopify/ResourceType/ID
+	parts := strings.Split(globalID, "/")
+	if len(parts) < 4 {
+		return globalID // Not a valid global ID, return as is
+	}
+	return parts[len(parts)-1]
 }

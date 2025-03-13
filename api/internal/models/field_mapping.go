@@ -19,7 +19,8 @@ const (
 	// TransformationTypeMap means mapping values (e.g., status codes)
 	TransformationTypeMap TransformationType = "map"
 	// TransformationTypeTemplate means using a template
-	TransformationTypeTemplate TransformationType = "template"
+	TransformationTypeTemplate  TransformationType = "template"
+	TransformationTypeGraphQLID TransformationType = "graphql_id"
 )
 
 // FieldMapping represents a mapping between source and destination fields
