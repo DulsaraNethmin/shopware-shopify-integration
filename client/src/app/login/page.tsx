@@ -56,15 +56,15 @@ export default function LoginPage() {
                     <h1 className="text-2xl font-bold text-gray-900 mb-2">
                         Shopware to Shopify Integration
                     </h1>
-                    <p className="text-gray-600 mb-6">
-                        Secure access to your integration dashboard using your Keycloak credentials.
-                    </p>
+                    {/*<p className="text-gray-600 mb-6">*/}
+                    {/*    Secure access to your integration dashboard using your Keycloak credentials.*/}
+                    {/*</p>*/}
 
                     <button
                         onClick={handleLogin}
                         className="w-full py-3 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors duration-300 cursor-pointer"
                     >
-                        Sign in with Keycloak
+                        Sign in
                     </button>
 
                     <div className="mt-6 text-sm text-gray-500">
