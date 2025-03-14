@@ -59,16 +59,7 @@ func (s *Server) setupRoutes() {
 		publicGroup.GET("/health", func(c *gin.Context) {
 			c.JSON(200, gin.H{"status": "Healthy!"})
 		})
-
-		// Webhook endpoint for Shopware
-		// Webhook endpoints for Shopware
-		//publicGroup.POST("/webhook/shopware", webhookHandler.HandleShopwareWebhook)
-		//publicGroup.POST("/webhook/shopware/product", webhookHandler.HandleShopwareWebhook)
-		//publicGroup.POST("/webhook/shopware/order", webhookHandler.HandleShopwareWebhook)
-		// In routes.go
-		// Webhook endpoint for Shopware
 		publicGroup.POST("/webhook/shopware", webhookHandler.HandleShopwareWebhook)
-
 		publicGroup.GET("shopify/callback", func(c *gin.Context) {
 			c.JSON(200, gin.H{"status": "Shopify"})
 		})
@@ -76,9 +67,7 @@ func (s *Server) setupRoutes() {
 
 	// Private routes (authentication required)
 	privateGroup := s.router.Group("/api/v1")
-	//privateGroup.Use(middleware.AuthMiddleware(s.config.Server.Secret))
 	privateGroup.Use(keycloakMiddleware.AuthRequired)
-	//privateGroup.Use()
 	{
 		// Connector routes
 		privateGroup.GET("/connectors", connectorHandler.ListConnectors)
@@ -108,6 +97,17 @@ func (s *Server) setupRoutes() {
 		// Migration log routes
 		privateGroup.GET("/dataflows/:id/logs", dataflowHandler.ListMigrationLogs)
 		privateGroup.GET("/dataflows/:id/logs/:logId", dataflowHandler.GetMigrationLog)
+	}
+
+	// Route group for Lambda function callbacks with API key auth
+	lambdaGroup := s.router.Group("/api/v1/lambda")
+	lambdaGroup.Use(middleware.APIKeyMiddleware(s.config.Server.Secret))
+	{
+		lambdaGroup.POST("/webhook/update-migration", webhookHandler.UpdateMigrationStatus)
+		lambdaGroup.GET("/dataflows/:id/mappings", dataflowHandler.ListFieldMappings)
+		lambdaGroup.GET("/dataflows/:id", dataflowHandler.GetDataflow)
+		lambdaGroup.GET("/connectors/:id", connectorHandler.GetConnector)
+		// Add other lambda-specific endpoints
 	}
 }
 
