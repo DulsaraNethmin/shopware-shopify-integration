@@ -106,7 +106,7 @@ func (s *Server) setupRoutes() {
 		lambdaGroup.POST("/webhook/update-migration", webhookHandler.UpdateMigrationStatus)
 		lambdaGroup.GET("/dataflows/:id/mappings", dataflowHandler.ListFieldMappings)
 		lambdaGroup.GET("/dataflows/:id", dataflowHandler.GetDataflow)
-		lambdaGroup.GET("/connectors/:id", connectorHandler.GetConnector)
+		lambdaGroup.GET("/connectors/:id", connectorHandler.GetConnectorLambda)
 		// Add other lambda-specific endpoints
 	}
 }

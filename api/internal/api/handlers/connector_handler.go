@@ -39,6 +39,18 @@ type ConnectorResponse struct {
 	UpdatedAt string               `json:"updated_at"`
 }
 
+type ConnectorResponseLambda struct {
+	ID          uint                 `json:"id"`
+	Name        string               `json:"name"`
+	Type        models.ConnectorType `json:"type"`
+	URL         string               `json:"url"`
+	Username    string               `json:"username,omitempty"`
+	AccessToken string               `json:"access_token,omitempty"` // Add this line
+	IsActive    bool                 `json:"is_active"`
+	CreatedAt   string               `json:"created_at"`
+	UpdatedAt   string               `json:"updated_at"`
+}
+
 //type CreateConnectorRequest struct {
 //	Name      string               `json:"name" binding:"required"`
 //	Type      models.ConnectorType `json:"type" binding:"required"`
@@ -60,6 +72,20 @@ func toConnectorResponse(connector *models.Connector) ConnectorResponse {
 		IsActive:  connector.IsActive,
 		CreatedAt: connector.CreatedAt.Format("2006-01-02T15:04:05Z"),
 		UpdatedAt: connector.UpdatedAt.Format("2006-01-02T15:04:05Z"),
+	}
+}
+
+func toConnectorResponseLambda(connector *models.Connector) ConnectorResponseLambda {
+	return ConnectorResponseLambda{
+		ID:          connector.ID,
+		Name:        connector.Name,
+		Type:        connector.Type,
+		URL:         connector.URL,
+		Username:    connector.Username,
+		AccessToken: connector.AccessToken, // Add this line
+		IsActive:    connector.IsActive,
+		CreatedAt:   connector.CreatedAt.Format("2006-01-02T15:04:05Z"),
+		UpdatedAt:   connector.UpdatedAt.Format("2006-01-02T15:04:05Z"),
 	}
 }
 
@@ -129,6 +155,33 @@ func (h *ConnectorHandler) GetConnector(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"data": toConnectorResponse(connector),
+	})
+}
+
+func (h *ConnectorHandler) GetConnectorLambda(c *gin.Context) {
+	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Invalid connector ID",
+		})
+		return
+	}
+
+	connector, err := h.service.GetConnector(uint(id))
+	if err != nil {
+		status := http.StatusInternalServerError
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			status = http.StatusNotFound
+		}
+
+		c.JSON(status, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"data": toConnectorResponseLambda(connector),
 	})
 }
 
