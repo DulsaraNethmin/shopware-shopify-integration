@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -259,10 +260,425 @@ func (s *FieldMappingService) applyTransformation(value interface{}, mapping mod
 		}
 		return nil, fmt.Errorf("value is not a string")
 
+	case models.TransformationTypeArrayMap:
+		// Handle array to array mapping
+		var config struct {
+			SourcePath string            `json:"source_path"`
+			DestPath   string            `json:"dest_path"`
+			Mapping    map[string]string `json:"mapping"`
+		}
+
+		if err := json.Unmarshal([]byte(mapping.TransformConfig), &config); err != nil {
+			return nil, fmt.Errorf("invalid transform config: %w", err)
+		}
+
+		// Array mapping logic...
+		return transformArray(value, config)
+
+	case models.TransformationTypeJsonPath:
+		// Extract value from JSON using path
+		var config struct {
+			Path string `json:"path"`
+		}
+
+		if err := json.Unmarshal([]byte(mapping.TransformConfig), &config); err != nil {
+			return nil, fmt.Errorf("invalid transform config: %w", err)
+		}
+
+		// JSONPath extraction logic...
+		return extractJsonPath(value, config.Path)
+
+	case models.TransformationTypeMediaMap:
+		// Convert Shopware media to Shopify media
+		var config struct {
+			BaseURL string `json:"base_url"`
+		}
+
+		if err := json.Unmarshal([]byte(mapping.TransformConfig), &config); err != nil {
+			return nil, fmt.Errorf("invalid transform config: %w", err)
+		}
+
+		return transformMedia(value, config)
+
+	case models.TransformationTypeMetafield:
+		// Create Shopify metafield from Shopware value
+		var config struct {
+			Namespace string `json:"namespace"`
+			Key       string `json:"key"`
+			Type      string `json:"type"`
+		}
+
+		if err := json.Unmarshal([]byte(mapping.TransformConfig), &config); err != nil {
+			return nil, fmt.Errorf("invalid transform config: %w", err)
+		}
+
+		return createMetafield(value, config)
+
+	case models.TransformationTypeEntityLookup:
+		// Look up entity by ID and return a property
+		var config struct {
+			EntityType string `json:"entity_type"`
+			Property   string `json:"property"`
+		}
+
+		if err := json.Unmarshal([]byte(mapping.TransformConfig), &config); err != nil {
+			return nil, fmt.Errorf("invalid transform config: %w", err)
+		}
+
+		return s.lookupEntity(value, config)
+
 	default:
 		return nil, fmt.Errorf("unsupported transformation type: %s", mapping.TransformType)
 	}
+
+	//default:
+	//	return nil, fmt.Errorf("unsupported transformation type: %s", mapping.TransformType)
+	//}
 }
+
+// transformMedia transforms Shopware media to Shopify media format
+func transformMedia(value interface{}, config struct {
+	BaseURL string `json:"base_url"`
+}) (interface{}, error) {
+	// Check if value is an array
+	sourceArray, ok := value.([]interface{})
+	if !ok {
+		return nil, fmt.Errorf("media value is not an array")
+	}
+
+	// Create destination array for media
+	destMedia := make([]interface{}, 0, len(sourceArray))
+
+	// Process each media item
+	for i, item := range sourceArray {
+		mediaMap, ok := item.(map[string]interface{})
+		if !ok {
+			continue
+		}
+
+		// Extract media properties
+		var (
+			url string
+			alt string
+			_   string
+		)
+
+		if urlVal, found := mediaMap["url"]; found && urlVal != nil {
+			url = fmt.Sprintf("%s", urlVal)
+		}
+
+		if altVal, found := mediaMap["alt"]; found && altVal != nil {
+			alt = fmt.Sprintf("%s", altVal)
+		}
+
+		if titleVal, found := mediaMap["title"]; found && titleVal != nil {
+			_ = fmt.Sprintf("%s", titleVal)
+		} else {
+			// Use alt text as fallback for title
+			_ = alt
+		}
+
+		// Construct the full URL
+		fullURL := url
+		if config.BaseURL != "" && !strings.HasPrefix(url, "http") {
+			if strings.HasSuffix(config.BaseURL, "/") {
+				fullURL = config.BaseURL + url
+			} else {
+				fullURL = config.BaseURL + "/" + url
+			}
+		}
+
+		// Create the destination media object
+		destItem := map[string]interface{}{
+			"mediaContentType": "IMAGE",
+			"originalSource":   fullURL,
+			"alt":              alt,
+			"position":         i + 1,
+		}
+
+		// Add the media item to the destination array
+		destMedia = append(destMedia, destItem)
+	}
+
+	return destMedia, nil
+}
+
+// lookupEntity looks up an entity by ID and returns a property
+func (s *FieldMappingService) lookupEntity(value interface{}, config struct {
+	EntityType string `json:"entity_type"`
+	Property   string `json:"property"`
+}) (interface{}, error) {
+	// Convert value to string ID
+	strID := fmt.Sprintf("%v", value)
+	if strID == "" {
+		return nil, fmt.Errorf("empty entity ID")
+	}
+
+	// For Shopware, entity types include: product, category, manufacturer, etc.
+	switch config.EntityType {
+	case "manufacturer":
+		// Look up manufacturer
+		var manufacturer map[string]interface{}
+		err := s.db.Table("manufacturer").
+			Where("id = ?", strID).
+			First(&manufacturer).Error
+
+		if err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return strID, nil // Return original ID if not found
+			}
+			return nil, fmt.Errorf("error looking up manufacturer: %w", err)
+		}
+
+		// Extract the requested property
+		if prop, ok := manufacturer[config.Property]; ok {
+			return prop, nil
+		}
+		return strID, nil // Return original ID if property not found
+
+	case "category":
+		// Look up category
+		var category map[string]interface{}
+		err := s.db.Table("category").
+			Where("id = ?", strID).
+			First(&category).Error
+
+		if err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return strID, nil
+			}
+			return nil, fmt.Errorf("error looking up category: %w", err)
+		}
+
+		if prop, ok := category[config.Property]; ok {
+			return prop, nil
+		}
+		return strID, nil
+
+	default:
+		return strID, fmt.Errorf("unsupported entity type: %s", config.EntityType)
+	}
+}
+
+// transformArray transforms an array based on the mapping configuration
+func transformArray(value interface{}, config struct {
+	SourcePath string            `json:"source_path"`
+	DestPath   string            `json:"dest_path"`
+	Mapping    map[string]string `json:"mapping"`
+}) (interface{}, error) {
+	// Check if value is an array
+	sourceArray, ok := value.([]interface{})
+	if !ok {
+		// Try to convert from map to array if it's a single object
+		if sourceMap, mapOk := value.(map[string]interface{}); mapOk {
+			return []interface{}{transformSingleObject(sourceMap, config)}, nil
+		}
+		return nil, fmt.Errorf("value is not an array or object")
+	}
+
+	// Create destination array
+	destArray := make([]interface{}, 0, len(sourceArray))
+
+	// Process each item in the source array
+	for _, item := range sourceArray {
+		// Skip if not an object
+		itemMap, ok := item.(map[string]interface{})
+		if !ok {
+			continue
+		}
+
+		// Transform the item
+		destItem := transformSingleObject(itemMap, config)
+		destArray = append(destArray, destItem)
+	}
+
+	return destArray, nil
+}
+
+// createMetafield transforms a value into a Shopify metafield
+func createMetafield(value interface{}, config struct {
+	Namespace string `json:"namespace"`
+	Key       string `json:"key"`
+	Type      string `json:"type"`
+}) (interface{}, error) {
+	if config.Namespace == "" || config.Key == "" {
+		return nil, fmt.Errorf("metafield namespace and key are required")
+	}
+
+	// Determine the value type
+	metafieldType := config.Type
+	if metafieldType == "" {
+		metafieldType = "string"
+	}
+
+	// Convert value based on metafield type
+	var metafieldValue interface{}
+	switch metafieldType {
+	case "string":
+		metafieldValue = fmt.Sprintf("%v", value)
+	case "number_integer":
+		if intVal, err := strconv.Atoi(fmt.Sprintf("%v", value)); err == nil {
+			metafieldValue = intVal
+		} else {
+			metafieldValue = 0
+		}
+	case "number_decimal":
+		if floatVal, err := strconv.ParseFloat(fmt.Sprintf("%v", value), 64); err == nil {
+			metafieldValue = floatVal
+		} else {
+			metafieldValue = 0.0
+		}
+	case "boolean":
+		boolStr := strings.ToLower(fmt.Sprintf("%v", value))
+		metafieldValue = boolStr == "true" || boolStr == "1" || boolStr == "yes"
+	case "json_string":
+		// For JSON, we just convert the value to a string
+		jsonBytes, err := json.Marshal(value)
+		if err != nil {
+			metafieldValue = "{}"
+		} else {
+			metafieldValue = string(jsonBytes)
+		}
+	default:
+		metafieldValue = fmt.Sprintf("%v", value)
+	}
+
+	// Create the metafield object
+	metafield := map[string]interface{}{
+		"namespace": config.Namespace,
+		"key":       config.Key,
+		"value":     metafieldValue,
+		"type":      metafieldType,
+	}
+
+	return metafield, nil
+}
+
+// transformSingleObject transforms a single object in an array
+func transformSingleObject(item map[string]interface{}, config struct {
+	SourcePath string            `json:"source_path"`
+	DestPath   string            `json:"dest_path"`
+	Mapping    map[string]string `json:"mapping"`
+}) map[string]interface{} {
+	result := make(map[string]interface{})
+
+	// Extract source value using source path
+	var sourceValue interface{}
+	if config.SourcePath == "" {
+		sourceValue = item // Use entire item if no source path
+	} else {
+		paths := strings.Split(config.SourcePath, ".")
+		current := item
+		for i, path := range paths {
+			if i == len(paths)-1 {
+				sourceValue = current[path]
+				break
+			}
+			if nextMap, ok := current[path].(map[string]interface{}); ok {
+				current = nextMap
+			} else {
+				return result // Path doesn't exist, return empty result
+			}
+		}
+	}
+
+	// Apply mapping if present
+	mappedValue := sourceValue
+	if config.Mapping != nil {
+		if sourceStr, ok := sourceValue.(string); ok {
+			if mapped, exists := config.Mapping[sourceStr]; exists {
+				mappedValue = mapped
+			}
+		}
+	}
+
+	// Set destination value using dest path
+	if config.DestPath == "" {
+		// If no dest path, copy the whole item structure
+		for k, v := range item {
+			result[k] = v
+		}
+	} else {
+		// Put the mapped value at the destination path
+		paths := strings.Split(config.DestPath, ".")
+		current := result
+		for i, path := range paths {
+			if i == len(paths)-1 {
+				// Final path component, set the value
+				current[path] = mappedValue
+			} else {
+				// Create intermediate objects if needed
+				if _, exists := current[path]; !exists {
+					current[path] = make(map[string]interface{})
+				}
+				current = current[path].(map[string]interface{})
+			}
+		}
+	}
+
+	return result
+}
+
+// extractJsonPath extracts a value from an object using a JSON path
+func extractJsonPath(value interface{}, path string) (interface{}, error) {
+	if path == "" {
+		return value, nil
+	}
+
+	// Parse the JSON path
+	components := strings.Split(path, ".")
+	current := value
+
+	for _, component := range components {
+		// Handle array indexing in the path (e.g., items[0])
+		var index int = -1
+		var key string
+
+		if match := arrayIndexRegex.FindStringSubmatch(component); len(match) > 0 {
+			key = match[1]
+			indexStr := match[2]
+			idx, err := strconv.Atoi(indexStr)
+			if err != nil {
+				return nil, fmt.Errorf("invalid array index in path: %s", component)
+			}
+			index = idx
+		} else {
+			key = component
+		}
+
+		// Navigate the object
+		switch v := current.(type) {
+		case map[string]interface{}:
+			if val, exists := v[key]; exists {
+				if index >= 0 {
+					// Try to access array element
+					if arr, ok := val.([]interface{}); ok {
+						if index < len(arr) {
+							current = arr[index]
+						} else {
+							return nil, fmt.Errorf("array index out of bounds: %d", index)
+						}
+					} else {
+						return nil, fmt.Errorf("value at key %s is not an array", key)
+					}
+				} else {
+					current = val
+				}
+			} else {
+				return nil, fmt.Errorf("key %s not found in object", key)
+			}
+		case []interface{}:
+			return nil, fmt.Errorf("cannot access property %s of an array", key)
+		default:
+			return nil, fmt.Errorf("cannot access property %s of a non-object", key)
+		}
+	}
+
+	return current, nil
+}
+
+// Add a regex for parsing array indices in JSON paths
+var arrayIndexRegex = regexp.MustCompile(`^([^\[]+)\[(\d+)\]$`)
 
 // getNestedValue gets a value from a nested object using dot notation
 func getNestedValue(obj map[string]interface{}, path string) (interface{}, error) {
@@ -425,4 +841,134 @@ func (s *FieldMappingService) convertFromGraphQLGlobalID(globalID string) string
 		return globalID // Not a valid global ID, return as is
 	}
 	return parts[len(parts)-1]
+}
+
+// GetDefaultProductMappings returns a set of default field mappings for product migration
+func (s *FieldMappingService) GetDefaultProductMappings(dataflowID uint) []models.FieldMapping {
+	return []models.FieldMapping{
+		{
+			DataflowID:      dataflowID,
+			SourceField:     "id",
+			DestField:       "id",
+			IsRequired:      true,
+			TransformType:   models.TransformationTypeGraphQLID,
+			TransformConfig: `{"resource_type": "Product", "direction": "to_global"}`,
+		},
+		{
+			DataflowID:    dataflowID,
+			SourceField:   "name",
+			DestField:     "title",
+			IsRequired:    true,
+			TransformType: models.TransformationTypeNone,
+		},
+		{
+			DataflowID:    dataflowID,
+			SourceField:   "description",
+			DestField:     "descriptionHtml",
+			IsRequired:    false,
+			TransformType: models.TransformationTypeNone,
+		},
+		{
+			DataflowID:    dataflowID,
+			SourceField:   "productNumber",
+			DestField:     "variants[0].sku",
+			IsRequired:    false,
+			TransformType: models.TransformationTypeNone,
+		},
+		{
+			DataflowID:      dataflowID,
+			SourceField:     "stock",
+			DestField:       "variants[0].inventoryQuantity",
+			IsRequired:      false,
+			TransformType:   models.TransformationTypeConvert,
+			TransformConfig: `{"type": "int"}`,
+		},
+		{
+			DataflowID:      dataflowID,
+			SourceField:     "price[0].gross",
+			DestField:       "variants[0].price",
+			IsRequired:      true,
+			TransformType:   models.TransformationTypeConvert,
+			TransformConfig: `{"type": "string"}`,
+		},
+		{
+			DataflowID:      dataflowID,
+			SourceField:     "active",
+			DestField:       "status",
+			IsRequired:      false,
+			DefaultValue:    "ACTIVE",
+			TransformType:   models.TransformationTypeMap,
+			TransformConfig: `{"true": "ACTIVE", "false": "DRAFT", "_default": "DRAFT"}`,
+		},
+		{
+			DataflowID:      dataflowID,
+			SourceField:     "manufacturerId",
+			DestField:       "vendor",
+			IsRequired:      false,
+			TransformType:   models.TransformationTypeEntityLookup,
+			TransformConfig: `{"entity_type": "manufacturer", "property": "name"}`,
+		},
+		{
+			DataflowID:      dataflowID,
+			SourceField:     "categoryIds",
+			DestField:       "collections",
+			IsRequired:      false,
+			TransformType:   models.TransformationTypeArrayMap,
+			TransformConfig: `{"source_path": "id", "dest_path": "id"}`,
+		},
+		{
+			DataflowID:      dataflowID,
+			SourceField:     "media",
+			DestField:       "media",
+			IsRequired:      false,
+			TransformType:   models.TransformationTypeMediaMap,
+			TransformConfig: `{"base_url": ""}`,
+		},
+		{
+			DataflowID:    dataflowID,
+			SourceField:   "metaTitle",
+			DestField:     "seo.title",
+			IsRequired:    false,
+			TransformType: models.TransformationTypeNone,
+		},
+		{
+			DataflowID:    dataflowID,
+			SourceField:   "metaDescription",
+			DestField:     "seo.description",
+			IsRequired:    false,
+			TransformType: models.TransformationTypeNone,
+		},
+		{
+			DataflowID:      dataflowID,
+			SourceField:     "weight",
+			DestField:       "variants[0].weight",
+			IsRequired:      false,
+			TransformType:   models.TransformationTypeConvert,
+			TransformConfig: `{"type": "float"}`,
+		},
+		{
+			DataflowID:      dataflowID,
+			SourceField:     "width",
+			DestField:       "metafields[0]",
+			IsRequired:      false,
+			TransformType:   models.TransformationTypeMetafield,
+			TransformConfig: `{"namespace": "dimensions", "key": "width", "type": "number_decimal"}`,
+		},
+		{
+			DataflowID:      dataflowID,
+			SourceField:     "height",
+			DestField:       "metafields[1]",
+			IsRequired:      false,
+			TransformType:   models.TransformationTypeMetafield,
+			TransformConfig: `{"namespace": "dimensions", "key": "height", "type": "number_decimal"}`,
+		},
+		{
+			DataflowID:      dataflowID,
+			SourceField:     "length",
+			DestField:       "metafields[2]",
+			IsRequired:      false,
+			TransformType:   models.TransformationTypeMetafield,
+			TransformConfig: `{"namespace": "dimensions", "key": "length", "type": "number_decimal"}`,
+		},
+	}
 }

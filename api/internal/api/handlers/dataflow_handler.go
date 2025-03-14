@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"errors"
+	"fmt"
 	"github.com/goccy/go-json"
 	"net/http"
 	"strconv"
@@ -619,5 +620,61 @@ func (h *DataflowHandler) ExecuteDataflow(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Dataflow execution started successfully",
+	})
+}
+
+// ApplyDefaultMappings applies default field mappings to a dataflow
+func (h *DataflowHandler) ApplyDefaultMappings(c *gin.Context) {
+	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Invalid dataflow ID",
+		})
+		return
+	}
+
+	// Verify the dataflow exists
+	dataflow, err := h.dataflowService.GetDataflow(uint(id))
+	if err != nil {
+		status := http.StatusInternalServerError
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			status = http.StatusNotFound
+		}
+
+		c.JSON(status, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	// Get default mappings based on dataflow type
+	var defaultMappings []models.FieldMapping
+
+	if dataflow.Type == models.DataflowTypeProduct {
+		defaultMappings = h.fieldMappingService.GetDefaultProductMappings(uint(id))
+	} else if dataflow.Type == models.DataflowTypeOrder {
+		// Add order mappings when implemented
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Default mappings for order type not implemented yet",
+		})
+		return
+	} else {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Unknown dataflow type",
+		})
+		return
+	}
+
+	// Create all the default mappings
+	for _, mapping := range defaultMappings {
+		if err := h.fieldMappingService.CreateFieldMapping(&mapping); err != nil {
+			// Log error but continue with other mappings
+			fmt.Printf("Error creating default mapping: %v\n", err)
+		}
+	}
+
+	c.JSON(http.StatusCreated, gin.H{
+		"message": "Default field mappings applied successfully",
+		"count":   len(defaultMappings),
 	})
 }

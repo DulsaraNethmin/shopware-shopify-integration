@@ -120,7 +120,9 @@ const api = {
 
     // Products (for testing)
     getProducts: (connectorId: number) => apiClient.get<{ data: any }>(`/connectors/${connectorId}/products`),
-    getProduct: (connectorId: number, productId: string) => apiClient.get<{ data: any }>(`/connectors/${connectorId}/products/${productId}`)
+    getProduct: (connectorId: number, productId: string) => apiClient.get<{ data: any }>(`/connectors/${connectorId}/products/${productId}`),
+
+    applyDefaultMappings: (dataflowId: number) => apiClient.post<{ message: string, count: number }>(`/dataflows/${dataflowId}/mappings/defaults`),
 };
 
 export default api;

@@ -87,6 +87,7 @@ func (s *Server) setupRoutes() {
 		privateGroup.GET("/dataflows/:id", dataflowHandler.GetDataflow)
 		privateGroup.PUT("/dataflows/:id", dataflowHandler.UpdateDataflow)
 		privateGroup.DELETE("/dataflows/:id", dataflowHandler.DeleteDataflow)
+		privateGroup.POST("/dataflows/:id/mappings/defaults", dataflowHandler.ApplyDefaultMappings)
 
 		// Field mapping routes
 		privateGroup.GET("/dataflows/:id/mappings", dataflowHandler.ListFieldMappings)

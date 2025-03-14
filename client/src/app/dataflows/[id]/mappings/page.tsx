@@ -10,7 +10,7 @@ import DashboardLayout from '@/components/layout/DashboardLayout';
 import PageHeader from '@/components/layout/PageHeader';
 import { AuthGuard } from '@/contexts/AuthContext';
 import api, { Dataflow, FieldMapping } from '@/lib/api';
-import { formatDate, getStatusVariant, titleCase } from '@/lib/utils';
+import {formatDate, formatError, getStatusVariant, titleCase} from '@/lib/utils';
 import toast from 'react-hot-toast';
 
 // Field mapping form component
@@ -120,6 +120,13 @@ function FieldMappingForm({ mapping, dataflowId, onSave, onCancel }: FieldMappin
                                 <option value="convert">Convert Type</option>
                                 <option value="map">Map Values</option>
                                 <option value="template">Template</option>
+                                <option value="graphql_id">GraphQL Global ID</option>
+                                <option value="array_map">Array Mapping</option>
+                                <option value="json_path">JSON Path</option>
+                                <option value="media_map">Media Mapping</option>
+                                <option value="metafield">Metafield</option>
+                                <option value="entity_lookup">Entity Lookup</option>
+                                <option value="conditional">Conditional</option>
                             </select>
                         </div>
                         <div className="space-y-2">
@@ -193,12 +200,30 @@ export default function FieldMappingsPage() {
     const [activeTab, setActiveTab] = useState('mappings');
 
     // Example field recommendations based on data type
+// Product field recommendations based on analyzed data models
     const productFieldRecommendations = [
-        { source: 'product.id', dest: 'product.id', description: 'Product ID' },
-        { source: 'product.name', dest: 'product.title', description: 'Product name/title' },
-        { source: 'product.description', dest: 'product.body_html', description: 'Product description' },
-        { source: 'product.price[0].gross', dest: 'product.variants[0].price', description: 'Product price' },
-        { source: 'product.stock', dest: 'product.variants[0].inventory_quantity', description: 'Stock quantity' }
+        { source: "id", dest: "id", description: "Product ID", transform: "GraphQL ID" },
+        { source: "name", dest: "title", description: "Product name/title" },
+        { source: "description", dest: "descriptionHtml", description: "Product description" },
+        { source: "price[0].gross", dest: "variants[0].price", description: "Product price", transform: "Convert to string" },
+        { source: "price[0].net", dest: "variants[0].compareAtPrice", description: "Compare at price", transform: "Convert to string" },
+        { source: "stock", dest: "variants[0].inventoryQuantity", description: "Stock quantity", transform: "Convert to integer" },
+        { source: "active", dest: "status", description: "Product status", transform: "Map boolean to ACTIVE/DRAFT" },
+        { source: "productNumber", dest: "variants[0].sku", description: "Product SKU/Number" },
+        { source: "weight", dest: "variants[0].weight", description: "Product weight" },
+        { source: "height", dest: "metafields[0].value", description: "Product height", transform: "Custom metafield" },
+        { source: "width", dest: "metafields[1].value", description: "Product width", transform: "Custom metafield" },
+        { source: "length", dest: "metafields[2].value", description: "Product length", transform: "Custom metafield" },
+        { source: "manufacturerId", dest: "vendor", description: "Product manufacturer/vendor", transform: "Entity lookup" },
+        { source: "categoryIds", dest: "collections", description: "Product categories", transform: "Array mapping" },
+        { source: "media", dest: "media", description: "Product images", transform: "Media mapping" },
+        { source: "metaTitle", dest: "seo.title", description: "SEO title" },
+        { source: "metaDescription", dest: "seo.description", description: "SEO description" },
+        { source: "customFields", dest: "metafields", description: "Custom fields", transform: "JSON transformation" },
+        { source: "tags", dest: "tags", description: "Product tags", transform: "Array mapping" },
+        { source: "minPurchase", dest: "metafields[3].value", description: "Minimum purchase quantity", transform: "Custom metafield" },
+        { source: "maxPurchase", dest: "metafields[4].value", description: "Maximum purchase quantity", transform: "Custom metafield" },
+        { source: "options", dest: "options", description: "Product options", transform: "Array mapping" },
     ];
 
     const orderFieldRecommendations = [
@@ -333,6 +358,29 @@ export default function FieldMappingsPage() {
         ? productFieldRecommendations
         : orderFieldRecommendations;
 
+
+    const handleApplyDefaultMappings = async () => {
+        if (!window.confirm('This will add recommended field mappings based on the dataflow type. Continue?')) {
+            return;
+        }
+
+        try {
+            setIsLoading(true);
+            await api.applyDefaultMappings(dataflowId);
+            toast.success('Default mappings applied successfully');
+
+            // Refresh mappings
+            const mappingsRes = await api.getFieldMappings(dataflowId);
+            setMappings(mappingsRes.data.data || []);
+
+        } catch (error) {
+            console.error('Error applying default mappings:', error);
+            toast.error(`Failed to apply default mappings: ${formatError(error)}`);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
     return (
         <AuthGuard>
             <DashboardLayout>
@@ -340,9 +388,17 @@ export default function FieldMappingsPage() {
                     title={`Field Mappings: ${dataflow.name}`}
                     description={`Configure field mappings for ${dataflow.type} data`}
                     actions={
-                        <Button onClick={handleAddMapping} variant={"outline"}>
-                            Add Field Mapping
-                        </Button>
+                        <div className="space-x-2">
+                            <Button onClick={handleAddMapping} variant={"outline"}>
+                                Add Field Mapping
+                            </Button>
+                            <Button
+                                onClick={handleApplyDefaultMappings}
+                                variant={"secondary"}
+                            >
+                                Apply Default Mappings
+                            </Button>
+                        </div>
                     }
                 />
 
