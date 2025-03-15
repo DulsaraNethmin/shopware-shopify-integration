@@ -92,7 +92,8 @@ export function previewTransformation(
                         return {
                             result: format(date, config.destFormat)
                         };
-                    } catch (e) {
+                    } catch (e: unknown) {
+                        const errorMessage = e instanceof Error ? e.message : 'Unknown error';
                         return {
                             result: sourceValue,
                             error: 'Invalid date format'
@@ -240,10 +241,11 @@ export function previewTransformation(
                     });
 
                     return { result: mapped };
-                } catch (e) {
+                } catch (e: unknown) {
+                    const errorMessage = e instanceof Error ? e.message : 'Unknown error';
                     return {
                         result: [],
-                        error: 'Error mapping array: ' + e.message
+                        error: 'Error mapping array: ' + errorMessage
                     };
                 }
 
@@ -280,10 +282,11 @@ export function previewTransformation(
                     }
 
                     return { result };
-                } catch (e) {
+                } catch (e: unknown) {
+                    const errorMessage = e instanceof Error ? e.message : 'Unknown error';
                     return {
                         result: null,
-                        error: 'Error extracting JSON path: ' + e.message
+                        error: 'Error extracting JSON path: ' + errorMessage
                     };
                 }
 
@@ -308,10 +311,11 @@ export function previewTransformation(
                     });
 
                     return { result: mapped };
-                } catch (e) {
+                } catch (e: unknown) {
+                    const errorMessage = e instanceof Error ? e.message : 'Unknown error';
                     return {
                         result: [],
-                        error: 'Error mapping media: ' + e.message
+                        error: 'Error mapping media: ' + errorMessage
                     };
                 }
 
@@ -381,10 +385,11 @@ export function previewTransformation(
                     error: 'Preview not available for this transformation type'
                 };
         }
-    } catch (error) {
+    } catch (error: unknown) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
         return {
             result: sourceValue,
-            error: 'Invalid transformation configuration: ' + error.message
+            error: 'Invalid transformation configuration: ' + errorMessage
         };
     }
 }
