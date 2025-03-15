@@ -1,3 +1,9 @@
+### Demo - https://sw2sp.nethmin-dev.online
+ - email - test@user.com
+ - password - 11111111
+#### Feel free to create a new account and try.
+
+
 # Field Mapping
 
 ## Data Models
