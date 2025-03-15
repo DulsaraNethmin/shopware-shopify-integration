@@ -3,15 +3,14 @@ package handlers
 import (
 	"encoding/json"
 	"fmt"
-	"io"
-	"net/http"
-	"strings"
-	"time"
-
 	"github.com/DulsaraNethmin/shopware-shopify-integration/internal/models"
 	"github.com/DulsaraNethmin/shopware-shopify-integration/internal/services"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
+	"io"
+	"net/http"
+	"strings"
+	"time"
 )
 
 // WebhookHandler handles webhook requests
@@ -209,12 +208,66 @@ func (h *WebhookHandler) HandleShopwareWebhook(c *gin.Context) {
 	})
 }
 
+//UpdateMigrationStatus updates the status of a migration
+//func (h *WebhookHandler) UpdateMigrationStatus(c *gin.Context) {
+//	var request struct {
+//		MigrationID     uint                   `json:"migration_id"`
+//		Status          models.MigrationStatus `json:"status"`
+//		DestIdentifier  string                 `json:"dest_identifier,omitempty"`
+//		ErrorMessage    string                 `json:"error_message,omitempty"`
+//		TransformedData json.RawMessage        `json:"transformed_data,omitempty"`
+//	}
+//
+//	if err := c.ShouldBindJSON(&request); err != nil {
+//		println(err.Error())
+//		c.JSON(http.StatusBadRequest, gin.H{
+//			"error": "Invalid request body",
+//		})
+//		return
+//	}
+//
+//	var migrationLog models.MigrationLog
+//	if err := h.db.First(&migrationLog, request.MigrationID).Error; err != nil {
+//		c.JSON(http.StatusNotFound, gin.H{
+//			"error": "Migration log not found",
+//		})
+//		return
+//	}
+//
+//	migrationLog.Status = request.Status
+//	if request.DestIdentifier != "" {
+//		migrationLog.DestIdentifier = request.DestIdentifier
+//	}
+//	if request.ErrorMessage != "" {
+//		migrationLog.ErrorMessage = request.ErrorMessage
+//	}
+//	if len(request.TransformedData) > 0 {
+//		migrationLog.TransformedPayload = string(request.TransformedData)
+//	}
+//
+//	if request.Status == models.MigrationStatusSuccess || request.Status == models.MigrationStatusFailed {
+//		now := time.Now()
+//		migrationLog.CompletedAt = &now
+//	}
+//
+//	if err := h.db.Save(&migrationLog).Error; err != nil {
+//		c.JSON(http.StatusInternalServerError, gin.H{
+//			"error": "Error updating migration log",
+//		})
+//		return
+//	}
+//
+//	c.JSON(http.StatusOK, gin.H{
+//		"message": "Migration status updated",
+//	})
+//}
+
 // UpdateMigrationStatus updates the status of a migration
 func (h *WebhookHandler) UpdateMigrationStatus(c *gin.Context) {
 	var request struct {
 		MigrationID     uint                   `json:"migration_id"`
 		Status          models.MigrationStatus `json:"status"`
-		DestIdentifier  string                 `json:"dest_identifier,omitempty"`
+		DestIdentifier  interface{}            `json:"dest_identifier,omitempty"` // Changed from string to interface{}
 		ErrorMessage    string                 `json:"error_message,omitempty"`
 		TransformedData json.RawMessage        `json:"transformed_data,omitempty"`
 	}
@@ -236,9 +289,13 @@ func (h *WebhookHandler) UpdateMigrationStatus(c *gin.Context) {
 	}
 
 	migrationLog.Status = request.Status
-	if request.DestIdentifier != "" {
-		migrationLog.DestIdentifier = request.DestIdentifier
+
+	// Handle dest_identifier which could be a number or string
+	if request.DestIdentifier != nil {
+		// Convert to string regardless of original type
+		migrationLog.DestIdentifier = fmt.Sprintf("%v", request.DestIdentifier)
 	}
+
 	if request.ErrorMessage != "" {
 		migrationLog.ErrorMessage = request.ErrorMessage
 	}
